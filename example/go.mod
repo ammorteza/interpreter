@@ -1,4 +1,4 @@
-module github.com/ammorteza/brainfuck
+module github.com/ammorteza/interpreter/example
 
 go 1.17
 
