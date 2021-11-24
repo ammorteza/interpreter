@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"log"
 	"os"
 )
 
+// Payload include some filed about RAM status on specific index
 type Payload struct {
 	Ptr         *uint16
 	Ram         []int16
@@ -16,6 +16,7 @@ type Payload struct {
 	output      []byte
 }
 
+// instruction is a instruction node
 type instruction struct {
 	operator byte
 	operand  uint16
@@ -27,16 +28,19 @@ type BFInterpreter struct {
 	ram        []int16
 }
 
+// New returns an instance of Brainfuck interpreter
 func New() *BFInterpreter {
 	bf := BFInterpreter{
 		operations: make(map[byte]func(*Payload)),
 	}
 
+	// initiating all default Brainfuck operations
 	bf.initDefaultOpt()
 
 	return &bf
 }
 
+// initDefaultOpt initiates all Brianfuck default operations
 func (bf *BFInterpreter) initDefaultOpt() {
 	bf.AddOpt('>', func(p *Payload) {
 		*p.Ptr++
@@ -54,6 +58,7 @@ func (bf *BFInterpreter) initDefaultOpt() {
 		p.Ram[*p.Ptr]--
 	})
 
+	// creating output
 	bf.AddOpt('.', func(p *Payload) {
 		p.output = append(p.output, byte(p.Ram[*p.Ptr]))
 	})
@@ -77,6 +82,7 @@ func (bf *BFInterpreter) initDefaultOpt() {
 	})
 }
 
+// RemoveOpt is usefull for removing a operation in runtime
 func (bf *BFInterpreter) RemoveOpt(tag byte) error {
 	_, ok := bf.operations[tag]
 	if !ok {
@@ -87,6 +93,7 @@ func (bf *BFInterpreter) RemoveOpt(tag byte) error {
 	return nil
 }
 
+// AddOpt is usefull for adding a new operation in runtime
 func (bf *BFInterpreter) AddOpt(tag byte, handler func(*Payload)) error {
 	_, ok := bf.operations[tag]
 	if ok {
@@ -110,15 +117,19 @@ func (bf *BFInterpreter) Interpret(stream io.Reader) error {
 	for _, c := range input {
 		_, ok := bf.operations[c]
 		if ok {
+			// adding all input operations in program stream
 			if c != '[' && c != ']' {
 				bf.program = append(bf.program, instruction{c, 0})
 			} else if c == '[' {
 				bf.program = append(bf.program, instruction{c, 0})
+				// adding to stack
 				jmp_stack = append(jmp_stack, pc)
 			} else {
 				if len(jmp_stack) == 0 {
 					return errors.New("compilation error")
 				}
+
+				// linking []
 				jmp_pc = jmp_stack[len(jmp_stack)-1]
 				jmp_stack = jmp_stack[:len(jmp_stack)-1]
 				bf.program = append(bf.program, instruction{c, jmp_pc})
@@ -150,14 +161,12 @@ func (bf *BFInterpreter) Execute() ([]byte, error) {
 			return nil, errors.New("invalid operation")
 		}
 
+		// running instructions
 		pl.Cursor = &pc
 		pl.Instruction = bf.program[pc]
 		handler(&pl)
 
 	}
 
-	for ii, i := range bf.program {
-		log.Println(ii, "--", string(i.operator), "=", i.operand)
-	}
 	return pl.output, nil
 }
